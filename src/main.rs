@@ -7,7 +7,7 @@ use std::path::Path;
 
 use image::RgbImage;
 
-use math::Vector;
+use math::{Vector, I, J, K, O};
 
 #[derive(Debug, Clone, Copy)]
 struct Color {
@@ -18,9 +18,32 @@ struct Color {
 
 impl Color {
     fn to_u8(self) -> [u8; 3] {
-        [(255.0 * self.r).round() as u8, (255.0 * self.g).round() as u8, (255.0 * self.b).round() as u8]
+        [(255.0 * self.r).round() as u8,
+         (255.0 * self.g).round() as u8,
+         (255.0 * self.b).round() as u8]
     }
 }
+
+const GREEN: Color = Color {
+    r: 0.0,
+    g: 1.0,
+    b: 0.0,
+};
+const RED: Color = Color {
+    r: 1.0,
+    g: 0.0,
+    b: 0.0,
+};
+const BLACK: Color = Color {
+    r: 0.0,
+    g: 0.0,
+    b: 0.0,
+};
+const WHITE: Color = Color {
+    r: 1.0,
+    g: 1.0,
+    b: 1.0,
+};
 
 #[derive(Debug, Clone, Copy)]
 struct Ray {
@@ -29,7 +52,7 @@ struct Ray {
 }
 
 trait Figure {
-    fn intersect(self, ray: Ray) -> Option<Color>;
+    fn intersect(&self, ray: Ray) -> Option<Color>;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -39,15 +62,16 @@ struct Sphere {
     radius: f64,
 }
 
+#[derive(Debug, Clone, Copy)]
 struct ChessBoard {
     colors: (Color, Color),
     o: Vector,
     a: Vector,
-    b: Vector
+    b: Vector,
 }
 
 impl Figure for Sphere {
-    fn intersect(self, ray: Ray) -> Option<Color> {
+    fn intersect(&self, ray: Ray) -> Option<Color> {
         let u = ray.source - self.center;
         let a = ray.direction * ray.direction;
         let b = 2.0 * u * ray.direction;
@@ -55,10 +79,24 @@ impl Figure for Sphere {
         let desc = b * b - 4.0 * a * c;
         if desc >= 0.0 {
             let alpha = (-b + desc.sqrt()) / (2.0 * a);
-            if alpha > 0.0 {
-                Some(self.color)
+            if alpha > 0.0 { Some(self.color) } else { None }
+        } else {
+            None
+        }
+    }
+}
+
+impl Figure for ChessBoard {
+    fn intersect(&self, ray: Ray) -> Option<Color> {
+        let u = ray.source - self.o;
+        // FIXME
+        if u * ray.direction < 0.0 {
+            let i = (self.a * u).trunc() as u32;
+            let j = (self.b * u).trunc() as u32;
+            if i + j / 2 == 0 {
+                Some(self.colors.0)
             } else {
-                None
+                Some(self.colors.1)
             }
         } else {
             None
@@ -76,17 +114,13 @@ struct Camera {
 
 struct Scene {
     camera: Camera,
-    objects: Vec<Sphere>,
+    objects: Vec<Box<Figure>>,
 }
 
-fn render(scene: &Scene, x_res: u32, y_res: u32) -> RgbImage {
+fn render(scene: Scene, x_res: u32, y_res: u32) -> RgbImage {
     let camera = scene.camera;
     let mut img = image::ImageBuffer::new(x_res, y_res);
-    let background_color = Color {
-        r: 0.0,
-        g: 0.0,
-        b: 0.0
-    };
+    let background_color = BLACK;
 
     for (i, j, p) in img.enumerate_pixels_mut() {
         let alpha = (i as f64) / (x_res as f64) - 0.5;
@@ -95,8 +129,8 @@ fn render(scene: &Scene, x_res: u32, y_res: u32) -> RgbImage {
             source: camera.position,
             direction: camera.forward + alpha * camera.right + beta * camera.up,
         };
-        for obj in &scene.objects {
-            let c = obj.clone().intersect(ray).unwrap_or(background_color);
+        for obj in scene.objects.iter() {
+            let c = obj.intersect(ray).unwrap_or(background_color);
             *p = image::Rgb(c.to_u8())
         }
     }
@@ -106,40 +140,28 @@ fn render(scene: &Scene, x_res: u32, y_res: u32) -> RgbImage {
 fn load_scene() -> Scene {
     Scene {
         camera: Camera {
-            position: Vector {
-                x: 0.0,
-                y: 0.0,
-                z: 0.0,
-            },
-            forward: Vector {
-                x: 0.0,
-                y: 0.0,
-                z: 1.0,
-            },
-            up: Vector {
-                x: 0.0,
-                y: 3.0,
-                z: 0.0,
-            },
-            right: Vector {
-                x: 4.0,
-                y: 0.0,
-                z: 0.0,
-            },
+            position: O,
+            forward: K,
+            up: 3.0 * J,
+            right: 4.0 * I,
         },
-        objects: vec![Sphere {
-                          center: Vector {
-                              x: 0.0,
-                              y: 0.0,
-                              z: 3.0,
-                          },
-                          color: Color {
-                              r: 0.0,
-                              g: 1.0,
-                              b: 0.0,
-                          },
-                          radius: 1.0,
-                      }],
+        objects: vec![Box::new(Sphere {
+                                   center: Vector {
+                                       x: 0.0,
+                                       y: 0.0,
+                                       z: 3.0,
+                                   },
+                                   color: GREEN,
+                                   radius: 1.0,
+                               }),
+                      Box::new(ChessBoard {
+                                   colors: (BLACK, WHITE),
+                                   o: 20.0 * K,
+                                   a: I,
+                                   b: J,
+                               })
+
+        ],
     }
 }
 
@@ -147,6 +169,6 @@ fn main() {
     let x_res = 1024;
     let y_res = 768;
     let scene = load_scene();
-    let img = render(&scene, x_res, y_res);
+    let img = render(scene, x_res, y_res);
     let _ = img.save(&Path::new("out.png"));
 }
