@@ -9,12 +9,20 @@ pub struct Vector {
 }
 
 impl Vector {
-    fn length(self) -> f64 {
+    pub fn length(self) -> f64 {
         (self * self).sqrt()
     }
 
-    fn normalize(self) -> Vector {
+    pub fn normalize(self) -> Vector {
         self / self.length()
+    }
+
+    pub fn cross(self, rhs: Vector) -> Vector {
+        Vector {
+            x: self.y * rhs.z - self.z * rhs.y,
+            y: self.z * rhs.x - self.x * rhs.z,
+            z: self.x * rhs.y - self.y * rhs.x
+        }
     }
 }
 

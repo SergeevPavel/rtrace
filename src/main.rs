@@ -4,6 +4,7 @@ extern crate image;
 mod math;
 
 use std::path::Path;
+use std::f64;
 
 use image::RgbImage;
 
@@ -52,7 +53,7 @@ struct Ray {
 }
 
 trait Figure {
-    fn intersect(&self, ray: Ray) -> Option<Color>;
+    fn intersect(&self, ray: Ray) -> Option<(f64, Color)>;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -71,15 +72,19 @@ struct ChessBoard {
 }
 
 impl Figure for Sphere {
-    fn intersect(&self, ray: Ray) -> Option<Color> {
+    fn intersect(&self, ray: Ray) -> Option<(f64, Color)> {
         let u = ray.source - self.center;
         let a = ray.direction * ray.direction;
         let b = 2.0 * u * ray.direction;
         let c = u * u - self.radius * self.radius;
         let desc = b * b - 4.0 * a * c;
         if desc >= 0.0 {
-            let alpha = (-b + desc.sqrt()) / (2.0 * a);
-            if alpha > 0.0 { Some(self.color) } else { None }
+            let alpha = (-b - desc.sqrt()) / (2.0 * a);
+            if alpha > 0.0 {
+                Some((alpha, self.color))
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -87,16 +92,21 @@ impl Figure for Sphere {
 }
 
 impl Figure for ChessBoard {
-    fn intersect(&self, ray: Ray) -> Option<Color> {
-        let u = ray.source - self.o;
-        // FIXME
-        if u * ray.direction < 0.0 {
-            let i = (self.a * u).trunc() as u32;
-            let j = (self.b * u).trunc() as u32;
-            if i + j / 2 == 0 {
-                Some(self.colors.0)
+    fn intersect(&self, ray: Ray) -> Option<(f64, Color)> {
+        let n = self.a.cross(self.b);
+        let gamma = ((self.o - ray.source) * n) / (ray.direction * n);
+        if gamma > 0.0 {
+            let v = ray.source + gamma * ray.direction;
+            let ort_a = n.cross(self.a);
+            let ort_b = n.cross(self.b);
+            let alpha = v * ort_b / (self.a * ort_b);
+            let beta = v * ort_a / (self.b * ort_a);
+            let i = alpha.ceil() as u32;
+            let j = beta.ceil() as u32;
+            if ((i % 2) + (j % 2)) % 2 == 0 {
+                Some((gamma, self.colors.0))
             } else {
-                Some(self.colors.1)
+                Some((gamma, self.colors.1))
             }
         } else {
             None
@@ -127,11 +137,18 @@ fn render(scene: Scene, x_res: u32, y_res: u32) -> RgbImage {
         let beta = (j as f64) / (y_res as f64) - 0.5;
         let ray = Ray {
             source: camera.position,
-            direction: camera.forward + alpha * camera.right + beta * camera.up,
+            direction: (camera.forward + alpha * camera.right - beta * camera.up).normalize(),
         };
+        let mut min = f64::INFINITY;
+        *p = image::Rgb(background_color.to_u8());
         for obj in scene.objects.iter() {
-            let c = obj.intersect(ray).unwrap_or(background_color);
-            *p = image::Rgb(c.to_u8())
+            if obj.intersect(ray).is_some() {
+                let (alpha, c) = obj.intersect(ray).unwrap();
+                if alpha < min {
+                    min = alpha;
+                    *p = image::Rgb(c.to_u8())
+                }
+            }
         }
     }
     img
@@ -140,27 +157,27 @@ fn render(scene: Scene, x_res: u32, y_res: u32) -> RgbImage {
 fn load_scene() -> Scene {
     Scene {
         camera: Camera {
-            position: O,
-            forward: K,
+            position: O + 5.0 * J,
+            forward: 2.5 * K,
             up: 3.0 * J,
             right: 4.0 * I,
         },
         objects: vec![Box::new(Sphere {
-                                   center: Vector {
-                                       x: 0.0,
-                                       y: 0.0,
-                                       z: 3.0,
-                                   },
+                                   center: J + 10.0 * K - 1.5 * I,
                                    color: GREEN,
+                                   radius: 1.0,
+                               }),
+                      Box::new(Sphere {
+                                   center: J + 15.0 * K + 1.5 * I,
+                                   color: RED,
                                    radius: 1.0,
                                }),
                       Box::new(ChessBoard {
                                    colors: (BLACK, WHITE),
-                                   o: 20.0 * K,
-                                   a: I,
-                                   b: J,
+                                   o: O,
+                                   a: 3.0 * I,
+                                   b: 3.0 * K,
                                })
-
         ],
     }
 }
