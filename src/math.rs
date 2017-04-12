@@ -102,6 +102,22 @@ pub const K: Vector = Vector {
     z: 1.0
 };
 
+#[derive(Debug, Clone, Copy)]
+pub struct Ray {
+    pub source: Vector,
+    pub direction: Vector,
+}
+
+impl Ray {
+    pub fn new(source: Vector, direction: Vector) -> Ray {
+        Ray {source: source, direction: direction.normalize()}
+    }
+
+    pub fn along(self, alpha: f64) -> Vector {
+        self.source + alpha * self.direction
+    }
+}
+
 #[test]
 fn vector_test() {
     let a = Vector {
