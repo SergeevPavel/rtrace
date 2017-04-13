@@ -3,6 +3,7 @@ extern crate image;
 
 mod math;
 mod color;
+mod material;
 mod scene;
 mod figures;
 
@@ -34,7 +35,11 @@ fn render(scene: Scene, x_res: u32, y_res: u32) -> RgbImage {
                 let IntersectionPoint { alpha, color, n } = obj.intersect(ray).unwrap();
                 if alpha < min {
                     min = alpha;
-                    *p = image::Rgb(color.to_u8())
+                    let material = obj.material();
+                    let ambient_color = scene.ambient_light.mix(color).bright(material.ambient);
+                    let to_light = scene.spotlight.position - ray.along(alpha);
+                    let diffuse_color = scene.spotlight.color.mix(color).bright(to_light.normalize() * n.normalize() * material.diffuse);
+                    *p = image::Rgb(ambient_color.add(diffuse_color).to_u8());
                 }
             }
         }

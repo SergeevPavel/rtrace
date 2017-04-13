@@ -1,5 +1,6 @@
 
 use color::Color;
+use material::*;
 use math::{Vector, Ray};
 
 pub struct IntersectionPoint {
@@ -20,6 +21,7 @@ impl IntersectionPoint {
 
 pub trait Figure {
     fn intersect(&self, ray: Ray) -> Option<IntersectionPoint>;
+    fn material(&self) -> Material;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -27,6 +29,7 @@ pub struct Sphere {
     pub color: Color,
     pub center: Vector,
     pub radius: f64,
+    pub material: Material
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -35,6 +38,7 @@ pub struct ChessBoard {
     pub o: Vector,
     pub a: Vector,
     pub b: Vector,
+    pub material: Material
 }
 
 impl Figure for Sphere {
@@ -56,6 +60,10 @@ impl Figure for Sphere {
         } else {
             None
         }
+    }
+
+    fn material(&self) -> Material {
+        self.material
     }
 }
 
@@ -79,5 +87,9 @@ impl Figure for ChessBoard {
         } else {
             None
         }
+    }
+
+    fn material(&self) -> Material {
+        self.material
     }
 }

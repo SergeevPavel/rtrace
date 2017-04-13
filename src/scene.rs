@@ -2,6 +2,7 @@
 use math::*;
 use figures::{Figure, Sphere, ChessBoard};
 use color::*;
+use material::*;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Camera {
@@ -14,47 +15,47 @@ pub struct Camera {
 pub struct Scene {
     pub camera: Camera,
     pub objects: Vec<Box<Figure>>,
-    pub spotlight: Vec<Spotlight>
+    pub spotlight: Spotlight,
+    pub ambient_light: Color,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Spotlight {
-    color: Color,
-    position: Vector
-}
-
-#[derive(Debug, Clone, Copy)]
-struct Material {
-    ambient: f64,
-    specular: f64,
-    diffuse: f64
+    pub color: Color,
+    pub position: Vector,
 }
 
 pub fn load_scene() -> Scene {
     Scene {
         camera: Camera {
-            position: O + 5.0 * J,
+            position: 5.0 * J,
             forward: 2.5 * K,
             up: 3.0 * J,
             right: 4.0 * I,
         },
         objects: vec![Box::new(Sphere {
-            center: J + 10.0 * K - 1.5 * I,
-            color: GREEN,
-            radius: 1.0,
-        }),
+                                   center: J + 10.0 * K - 1.5 * I,
+                                   color: GREEN,
+                                   radius: 1.0,
+                                   material: PLASTIC,
+                               }),
                       Box::new(Sphere {
-                          center: J + 15.0 * K + 1.5 * I,
-                          color: RED,
-                          radius: 1.0,
-                      }),
+                                   center: J + 15.0 * K + 1.5 * I,
+                                   color: RED,
+                                   radius: 1.0,
+                                   material: METAL
+                               }),
                       Box::new(ChessBoard {
-                          colors: (BLACK, WHITE),
-                          o: O,
-                          a: 3.0 * I,
-                          b: 3.0 * K,
-                      })
-        ],
-        spotlight: vec![]
+                                   colors: (BLACK, WHITE),
+                                   o: O,
+                                   a: 3.0 * I,
+                                   b: 3.0 * K,
+                                   material: PLASTIC
+                               })],
+        spotlight: Spotlight {
+            color: WHITE,
+            position: 2.0 * K + 5.0 * J,
+        },
+        ambient_light: WHITE.bright(0.2),
     }
 }
