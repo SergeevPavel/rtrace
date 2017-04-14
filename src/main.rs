@@ -32,8 +32,9 @@ fn render(scene: Scene, x_res: u32, y_res: u32) -> RgbImage {
         if let Some(IntersectionPoint { alpha, color, material, n }) = scene.trace(ray) {
             let ambient_color = scene.ambient_light.mix(color).bright(material.ambient);
             let to_light = (scene.spotlight.position - ray.along(alpha)).normalize();
-            let color = if let None = scene.trace(Ray::new(ray.along(alpha), to_light)) {
-                let diffuse_color = scene.spotlight.color.mix(color).bright((material.diffuse * to_light * n).max(0.0));
+            const EPS: f64 = 1e-5;
+            let color = if let None = scene.trace(Ray::new(ray.along(alpha - EPS), to_light)) {
+                let diffuse_color = scene.spotlight.color.mix(color).bright((material.diffuse * (to_light * n)).max(0.0));
                 let reflected = 2.0 * n * to_light * n - to_light;
                 let to_viewer = -1.0 * ray.direction;
                 let specular_color = scene.spotlight.color.mix(color).bright((material.specular * reflected * to_viewer).max(0.0));
