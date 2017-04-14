@@ -19,9 +19,9 @@ impl Vector {
 
     pub fn cross(self, rhs: Vector) -> Vector {
         Vector {
-            x: self.y * rhs.z - self.z * rhs.y,
-            y: self.z * rhs.x - self.x * rhs.z,
-            z: self.x * rhs.y - self.y * rhs.x
+            x: self.z * rhs.y - self.y * rhs.z,
+            y: self.x * rhs.z - self.z * rhs.x ,
+            z: self.y * rhs.x - self.x * rhs.y
         }
     }
 }

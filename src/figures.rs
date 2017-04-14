@@ -6,14 +6,16 @@ use math::{Vector, Ray};
 pub struct IntersectionPoint {
     pub alpha: f64,
     pub color: Color,
+    pub material: Material,
     pub n: Vector
 }
 
 impl IntersectionPoint {
-    pub fn new(alpha: f64, color: Color, n: Vector) -> IntersectionPoint {
+    pub fn new(alpha: f64, color: Color, material: Material, n: Vector) -> IntersectionPoint {
         IntersectionPoint {
             alpha: alpha,
             color: color,
+            material: material,
             n: n
         }
     }
@@ -53,7 +55,7 @@ impl Figure for Sphere {
             if alpha > 0.0 {
                 let p = ray.along(alpha);
                 let n = (p - self.center).normalize();
-                Some(IntersectionPoint::new(alpha, self.color, n))
+                Some(IntersectionPoint::new(alpha, self.color, self.material, n))
             } else {
                 None
             }
@@ -80,9 +82,9 @@ impl Figure for ChessBoard {
             let i = alpha.ceil() as u32;
             let j = beta.ceil() as u32;
             if ((i % 2) + (j % 2)) % 2 == 0 {
-                Some(IntersectionPoint::new(gamma, self.colors.0, n))
+                Some(IntersectionPoint::new(gamma, self.colors.0, self.material, n))
             } else {
-                Some(IntersectionPoint::new(gamma, self.colors.1, n))
+                Some(IntersectionPoint::new(gamma, self.colors.1, self.material, n))
             }
         } else {
             None

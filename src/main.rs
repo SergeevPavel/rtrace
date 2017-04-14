@@ -28,20 +28,20 @@ fn render(scene: Scene, x_res: u32, y_res: u32) -> RgbImage {
         let beta = (j as f64) / (y_res as f64) - 0.5;
         let ray = Ray::new(camera.position,
                            camera.forward + alpha * camera.right - beta * camera.up);
-        let mut min = f64::INFINITY;
         *p = image::Rgb(background_color.to_u8());
-        for obj in scene.objects.iter() {
-            if obj.intersect(ray).is_some() {
-                let IntersectionPoint { alpha, color, n } = obj.intersect(ray).unwrap();
-                if alpha < min {
-                    min = alpha;
-                    let material = obj.material();
-                    let ambient_color = scene.ambient_light.mix(color).bright(material.ambient);
-                    let to_light = scene.spotlight.position - ray.along(alpha);
-                    let diffuse_color = scene.spotlight.color.mix(color).bright(to_light.normalize() * n.normalize() * material.diffuse);
-                    *p = image::Rgb(ambient_color.add(diffuse_color).to_u8());
-                }
-            }
+        if let Some(IntersectionPoint { alpha, color, material, n }) = scene.trace(ray) {
+            let ambient_color = scene.ambient_light.mix(color).bright(material.ambient);
+            let to_light = (scene.spotlight.position - ray.along(alpha)).normalize();
+            let color = if let None = scene.trace(Ray::new(ray.along(alpha), to_light)) {
+                let diffuse_color = scene.spotlight.color.mix(color).bright((material.diffuse * to_light * n).max(0.0));
+                let reflected = 2.0 * n * to_light * n - to_light;
+                let to_viewer = -1.0 * ray.direction;
+                let specular_color = scene.spotlight.color.mix(color).bright((material.specular * reflected * to_viewer).max(0.0));
+                ambient_color.add(diffuse_color).add(specular_color)
+            } else {
+                ambient_color
+            };
+            *p = image::Rgb(color.to_u8());
         }
     }
     img
